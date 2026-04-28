@@ -87,10 +87,10 @@ async function connect() {
         await send("1003");
         
         log("SECURITY: APPLYING LEVEL 1 UNLOCK...");
-        await send("2701");
-        let res = await send("270255AA");
+        await send("2501");
+        let res = await send("250255AA");
         
-        if(res.includes("67 02")) log("SYSTEM UNLOCKED. READY FOR UDS DATA.", "highlight");
+        if(res.includes("65 02")) log("SYSTEM UNLOCKED. READY FOR UDS DATA.", "highlight");
         else log("SECURITY BYPASS COMPLETE (SILENT MODE).", "highlight");
         
         // Start background pinger to keep session open
