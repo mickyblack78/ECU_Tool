@@ -122,32 +122,19 @@ async function readUDSLiveData() {
         }
     }
 }
-    // THE MASTER PID REQUEST CODE
-async function requestSensor(hetPIDs) {
-    // 1. Send the Request (e.g., "220121")
-    let rawResponse = await send("22" + pidHex);
+    async function getPIDs() {
+    // This is the array you were missing to make the loop run
+    const standardPIDs = [{id: "0100", name: "BLOCK 1"}, {id: "0120", name: "BLOCK 2"}];
     
-    // 2. Check for Positive Response (62 + PID)
-    if (rawResponse.includes("62 " + pidHex.substring(0,2))) {
-        // Strip the header to get the raw data bytes
-        let data = rawResponse.split("62 " + pidHex.substring(0,2) + " " + pidHex.substring(2,4))[1].trim();
-        return data; 
-    }
-    return null;
-}
-    
+    log("QUERYING ECU SUPPORTED PIDS...", "highlight");
+
     for (let pid of standardPIDs) {
-        let res = await send(pid.id + "\r");
+        let res = await send(pid.id);
         
-        // Check for '41' (Success code for Service 01)
         if (res.includes("41")) {
-            // Strip the response to get just the data hex
-            let parts = res.split("41" + pid.id.substring(2));
-            if (parts.length > 1) {
-                let rawHex = parts[1].substring(0, 4);
-                // INTEGRITY: Log the translated value
-                log(`${pid.name}: ${translateData(pid.id, rawHex)}`);
-            }
+            // Strip headers and log the bitmask
+            let rawHex = res.split("41 " + pid.id.substring(2))[1] || res;
+            log(`${pid.name}: <span class="data-val">${rawHex.trim()}</span>`);
         } else {
             log(`${pid.name}: NO DATA`);
         }
