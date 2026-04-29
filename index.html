@@ -123,7 +123,25 @@ async function readUDSLiveData() {
     }
 }
 
-async function readMaintenance() {
+    for (let pid of standardPIDs) {
+        let res = await send(pid.id + "\r");
+        
+        // Check for '41' (Success code for Service 01)
+        if (res.includes("41")) {
+            // Strip the response to get just the data hex
+            let parts = res.split("41" + pid.id.substring(2));
+            if (parts.length > 1) {
+                let rawHex = parts[1].substring(0, 4);
+                // INTEGRITY: Log the translated value
+                log(`${pid.name}: ${translateData(pid.id, rawHex)}`);
+            }
+        } else {
+            log(`${pid.name}: NO DATA`);
+        }
+    }
+    }
+    
+    async function readMaintenance() {
     log("QUERYING MAINTENANCE DATA...", "highlight");
     // Common Delphi GW DIDs: DPF Soot (118B), Turbo Vane (1110)
     let soot = await send("22118B");
