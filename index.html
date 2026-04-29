@@ -94,7 +94,7 @@ async function connect() {
         else log("SECURITY BYPASS COMPLETE (SILENT MODE).", "highlight");
         
         // Start background pinger to keep session open
-        setInterval(() => { if(port) send("3E00"); }, 2000);
+        setInterval(() => { if(port) send("3E00"); }, 3000);
         
     } catch (e) { log("ERROR: " + e.message, "btn-red"); }
 }
