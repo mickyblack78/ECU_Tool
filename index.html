@@ -122,7 +122,20 @@ async function readUDSLiveData() {
         }
     }
 }
-
+    // THE MASTER PID REQUEST CODE
+async function requestSensor(pidHex) {
+    // 1. Send the Request (e.g., "220121")
+    let rawResponse = await send("22" + pidHex);
+    
+    // 2. Check for Positive Response (62 + PID)
+    if (rawResponse.includes("62 " + pidHex.substring(0,2))) {
+        // Strip the header to get the raw data bytes
+        let data = rawResponse.split("62 " + pidHex.substring(0,2) + " " + pidHex.substring(2,4))[1].trim();
+        return data; 
+    }
+    return null;
+}
+    
     for (let pid of standardPIDs) {
         let res = await send(pid.id + "\r");
         
