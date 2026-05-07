@@ -17,7 +17,10 @@
         #controls { padding: 5px 10px 65px 10px; min-height: 140px; }
         .ctrl-page { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         button { padding: 12px 2px; border: none; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; background: #333; text-transform: uppercase; }
-        .btn-blue { background: #0055ff; } .btn-green { background: #28a745; } .btn-purple { background: #6f42c1; } .btn-gold { background: #b8860b; }
+        .btn-blue { background: #0055ff; } .btn-green { background: #28a745; } .btn-purple { background: #6f42c1; } .btn-gold { background: #b8860b; }.btn-yellow { background: #ffcc00; color: black; }
+        .btn-blue-export { background: #007bff; }
+        .btn-rainbow { background: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet); 
+}
     </style>
 </head>
 <body>
@@ -51,6 +54,7 @@
         <button onclick="sendCommand('0902')">VIN (09)</button>
         <button onclick="sendCommand('22F190')">VIN (22)</button>
         <button class="btn-gold" onclick="sendCommand('0105')">ECT (01)</button>
+        
     </div>
 </div>
 
