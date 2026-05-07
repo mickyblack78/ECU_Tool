@@ -1,1 +1,207 @@
-uyt
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ECU Slapper PRO</title>
+    <style>
+        :root { --bg: #050505; --accent: #00f2ff; --panel: rgba(255, 255, 255, 0.07); }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { padding: 10px 15px; background: #111; border-bottom: 1px solid #333; display: flex; justify-content: space-between; font-size: 14px; }
+        #gauge-grid { flex: 0 0 45%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; padding: 10px; }
+        .gauge-card { background: var(--panel); border-radius: 10px; border: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        canvas { height: 70%; width: auto; }
+        .v-label { font-size: 10px; color: #aaa; text-transform: uppercase; margin-top: -5px; }
+        .v-val { font-size: 20px; font-weight: bold; color: white; }
+        #console { flex: 1; background: #000; margin: 5px 10px; border-radius: 5px; padding: 8px; font-family: monospace; font-size: 11px; overflow-y: auto; border-left: 3px solid var(--accent); color: #ccc; }
+        #controls { padding: 5px 10px 65px 10px; min-height: 140px; }
+        .ctrl-page { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        button { padding: 12px 2px; border: none; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; background: #333; text-transform: uppercase; }
+        .btn-blue { background: #0055ff; } .btn-green { background: #28a745; } .btn-purple { background: #6f42c1; } .btn-gold { background: #b8860b; }
+    </style>
+</head>
+<body>
+<header><div>X200 DCM3.7 <span id="status-text" style="color:red">OFFLINE</span></div><div id="mode-indicator">DASHBOARD</div></header>
+<div id="gauge-grid">
+    <div class="gauge-card"><canvas id="g1"></canvas><div class="v-val" id="v1">0</div><div class="v-label" id="l1">RPM</div></div>
+    <div class="gauge-card"><canvas id="g2"></canvas><div class="v-val" id="v2">0</div><div class="v-label" id="l2">MPa</div></div>
+    <div class="gauge-card"><canvas id="g3"></canvas><div class="v-val" id="v3">0</div><div class="v-label" id="l3">BOOST PSI</div></div>
+    <div class="gauge-card"><canvas id="g4"></canvas><div class="v-val" id="v4">0</div><div class="v-label" id="l4">TEMP °C</div></div>
+</div>
+<div id="console">READY FOR X200.</div>
+<div id="controls">
+    <div id="pg1" class="ctrl-page">
+        <button class="btn-blue" onclick="connect()">Connect</button>
+        <button class="btn-purple" onclick="setPage(2)">Enhanced</button>
+        <button class="btn-green" onclick="sendCommand('19020D')">Read DTCs</button>
+        <button id="live-btn" class="btn-gold" onclick="toggleLive()">Live: OFF</button>
+        <button onclick="manualHex()">Send Hex</button>
+        <button class="btn-gold" onclick="deepScanF1()">Scan F180s</button>
+        <button class="btn-green" onclick="requestStdPids()">Standard Hunt</button>
+        <button onclick="exportLog()">Export Log</button>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+    <div id="pg2" class="ctrl-page" style="display:none">
+        <button class="btn-purple" onclick="setPage(1)">Back</button>
+        <button class="btn-green" onclick="sendCommand('221123')">Hi-Res Fuel</button>
+        <button class="btn-green" onclick="sendCommand('221167')">Hi-Res Boost</button>
+        <button onclick="sendCommand('221121')">Hi-Res Temp</button>
+        <button onclick="sendCommand('0100')">Supported</button>
+        <button onclick="log('Target: Delphi DCM3.7')">ECU Info</button>
+        <button onclick="sendCommand('0902')">VIN (09)</button>
+        <button onclick="sendCommand('22F190')">VIN (22)</button>
+        <button class="btn-gold" onclick="sendCommand('0105')">ECT (01)</button>
+    </div>
+</div>
+
+<script>
+    let port, writer, reader, logContent = "";
+    let isConnected = false, isLive = false, liveInterval;
+
+    function log(text, type = "info") {
+        const el = document.getElementById('console');
+        const line = `[${new Date().toLocaleTimeString().split(' ')[0]}] ${text}`;
+        logContent += line + "\n";
+        el.innerHTML += `<div style="color:${type==='err'?'red':(type==='rx'?'#00f2ff':'#ccc')}">${line}</div>`;
+        el.scrollTop = el.scrollHeight;
+    }
+
+    async function connect() {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 38400 });
+            writer = port.writable.getWriter();
+            isConnected = true;
+            document.getElementById('status-text').innerText = "ONLINE";
+            document.getElementById('status-text').style.color = "var(--accent)";
+            readLoop();
+            log("WAKING ECU...");
+            await sendCommand("ATZ");
+            await new Promise(r => setTimeout(r, 800));
+            await sendCommand("AT SP 6"); 
+            await sendCommand("AT SH 7E0");
+            await sendCommand("ATE0"); 
+            log("Handshake Complete. ECU Ready.");
+        } catch (e) { log("Error: " + e.message, "err"); }
+    }
+
+    async function sendCommand(cmd) {
+        if (!writer) return;
+        const cleanCmd = cmd.replace(/\s+/g, '');
+        await writer.write(new TextEncoder().encode(cleanCmd + "\r"));
+        log("TX: " + cleanCmd);
+    }
+
+    async function readLoop() {
+        let multiLineBuffer = "";
+        while (port.readable) {
+            reader = port.readable.getReader();
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    let buffer = new TextDecoder().decode(value);
+                    if (buffer.includes('\r') || buffer.includes('>')) {
+                        let cleanData = buffer.replace(/>/g, '').trim();
+                        if (cleanData.match(/^[0-9]:/)) {
+                            multiLineBuffer += cleanData.substring(2).trim() + " ";
+                        } else if (cleanData) {
+                            log("RX: " + cleanData, "rx");
+                            parseOBD(cleanData);
+                        }
+                        if (buffer.includes('>') && multiLineBuffer.length > 0) {
+                            log("RX (Full): " + multiLineBuffer.trim(), "rx");
+                            parseOBD(multiLineBuffer.trim());
+                            multiLineBuffer = "";
+                        }
+                    }
+                }
+            } catch (e) { log("Read Error: " + e.message, "err"); break; }
+            finally { reader.releaseLock(); }
+        }
+    }
+
+    function parseOBD(data) {
+        const parts = data.trim().split(/\s+/);
+        // RPM
+        if (data.includes("41 0C") || data.includes("62 11 0C")) {
+            const idx = parts.indexOf("0C") !== -1 ? parts.indexOf("0C") + 1 : parts.indexOf("11") + 2;
+            const rpm = ((parseInt(parts[idx], 16) * 256) + parseInt(parts[idx+1], 16)) / 4;
+            document.getElementById('v1').innerText = Math.round(rpm);
+            drawGauge('g1', rpm, 0, 5000, 'RPM');
+        }
+        // Fuel Rail Pressure (MPa)
+        if (data.includes("41 23") || data.includes("62 11 23")) {
+            const idx = parts.indexOf("23") !== -1 ? parts.indexOf("23") + 1 : parts.indexOf("11") + 2;
+            const mpa = ((parseInt(parts[idx], 16) * 256 + parseInt(parts[idx+1], 16)) * 10 / 1000).toFixed(1);
+            document.getElementById('v2').innerText = mpa;
+            drawGauge('g2', mpa, 0, 180, 'MPa');
+        }
+        // Boost (PSI)
+        if (data.includes("41 0B") || data.includes("62 11 67")) {
+            const idx = data.includes("62 11 67") ? parts.indexOf("67") + 1 : parts.indexOf("0B") + 1;
+            const boost = Math.max(0, (parseInt(parts[idx], 16) - 101) * 0.145).toFixed(1); 
+            document.getElementById('v3').innerText = boost;
+            drawGauge('g3', boost, 0, 30, 'PSI');
+        }
+        // Coolant Temp
+        if (data.includes("41 05") || data.includes("62 11 21")) {
+            const idx = data.includes("62 11 21") ? parts.indexOf("21") + 1 : parts.indexOf("05") + 1;
+            const temp = parseInt(parts[idx], 16) - 40;
+            document.getElementById('v4').innerText = temp;
+            drawGauge('g4', temp, 0, 120, '°C');
+        }
+    }
+
+    function drawGauge(id, val, min, max, unit) {
+        const c = document.getElementById(id);
+        const ctx = c.getContext('2d');
+        c.width = 200; c.height = 200; ctx.clearRect(0, 0, 200, 200);
+        ctx.beginPath(); ctx.arc(100, 110, 80, 0.8 * Math.PI, 0.2 * Math.PI); ctx.strokeStyle = '#333'; ctx.lineWidth = 10; ctx.stroke();
+        const angle = 0.8 * Math.PI + (1.4 * Math.PI * ((val - min) / (max - min)));
+        ctx.beginPath(); ctx.arc(100, 110, 80, 0.8 * Math.PI, angle); ctx.strokeStyle = '#00f2ff'; ctx.lineWidth = 10; ctx.stroke();
+        ctx.fillStyle = '#aaa'; ctx.font = '12px Arial'; ctx.textAlign = 'center'; ctx.fillText(unit, 100, 140);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 24px Arial'; ctx.fillText(Math.round(val), 100, 110);
+    }
+
+    function setPage(num) {
+        document.getElementById('pg1').style.display = num === 1 ? 'grid' : 'none';
+        document.getElementById('pg2').style.display = num === 2 ? 'grid' : 'none';
+        document.getElementById('mode-indicator').innerText = num === 1 ? "DASHBOARD" : "ENHANCED DATA";
+    }
+
+    function toggleLive() {
+        isLive = !isLive;
+        const btn = document.getElementById('live-btn');
+        btn.innerText = isLive ? "Live: ON" : "Live: OFF";
+        btn.style.background = isLive ? "var(--accent)" : "#333";
+        if (isLive) {
+            liveInterval = setInterval(async () => {
+                if (isConnected && writer) { await sendCommand("010C"); await new Promise(r => setTimeout(r, 400)); await sendCommand("010B"); }
+            }, 1000);
+        } else { clearInterval(liveInterval); }
+    }
+
+    async function deepScanF1() {
+        log("--- SCANNING F180 ADDRESSES ---");
+        const range = ["F187", "F188", "F189", "F190", "F191", "F197", "F1A0"];
+        for (let id of range) { await sendCommand("22" + id); await new Promise(r => setTimeout(r, 500)); }
+    }
+
+    async function requestStdPids() {
+        log("--- HUNTING DIESEL PIDS ---");
+        const targetPids = ["0104", "0105", "010B", "010C", "010F", "0123"];
+        for (let cmd of targetPids) { await sendCommand(cmd); await new Promise(r => setTimeout(r, 500)); }
+    }
+
+    function manualHex() { const hex = prompt("Enter Hex:"); if (hex) sendCommand(hex.toUpperCase()); }
+    function exportLog() { const blob = new Blob([logContent], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `GW_Log_${Date.now()}.txt`; a.click(); }
+    function clearConsole() { document.getElementById('console').innerHTML = ""; logContent = ""; }
+
+    drawGauge('g1', 0, 0, 5000, 'RPM');
+    drawGauge('g2', 0, 0, 180, 'MPa');
+    drawGauge('g3', 0, 0, 30, 'PSI');
+    drawGauge('g4', 0, 0, 120, '°C');
+</script>
+</body>
+</html>
