@@ -21,7 +21,7 @@
         .btn-blue-export { background: #007bff; }
         .btn-rainbow { background: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet); 
 }
-    </style>
+</style>
 </head>
 <body>
 <header><div>X200 <span id="status-text" style="color:red">OFFLINE</span></div><div id="mode-indicator">DASHBOARD</div></header>
@@ -31,14 +31,14 @@
     <div class="gauge-card"><canvas id="g3"></canvas><div class="v-val" id="v3">0</div><div class="v-label" id="l3">BOOST PSI</div></div>
     <div class="gauge-card"><canvas id="g4"></canvas><div class="v-val" id="v4">0</div><div class="v-label" id="l4">TEMP °C</div></div>
 </div>
-<div id="console">Watch this space.</div>
+<div id="console">Watch this space</div>
 <div id="controls">
     <div id="pg1" class="ctrl-page">
         <button class="btn-blue" onclick="connect()">Connect</button>
-        <button class="btn-purple" onclick="setPage(2)">Enhanced</button>
+        <button class="btn-purple" onclick="setPage(2)">Next</button>
         <button class="btn-green" onclick="sendCommand('19020D')">Read DTCs</button>
         <button id="live-btn" class="btn-gold" onclick="toggleLive()">Live: OFF</button>
-        <button class="btn-yellow" onclick="Hex()">Send Hex</button>
+        <button class="btn-yellow" onclick="Hex()">Hex</button>
         <button class="btn-gold" onclick="deepScanF1()">Scan F180s</button>
         <button class="btn-green" onclick="requestStdPids()">Standard Hunt</button>
         <button class="btn-blue-export" onclick="exportLog()">Export Log</button>
@@ -197,10 +197,20 @@
         const targetPids = ["0104", "0105", "010B", "010C", "010F", "0123"];
         for (let cmd of targetPids) { await sendCommand(cmd); await new Promise(r => setTimeout(r, 500)); }
     }
+let isMusicPlaying = false;
+const audio = new Audio(E.C.U.mp3.mp3); // Replace with your file path
 
-    function manualHex() { const hex = prompt("Enter Hex:"); if (hex) sendCommand(hex.toUpperCase()); }
+    function toggleMusic() {
+    isMusicPlaying = !isMusicPlaying;
+    isMusicPlaying ? audio.play() : audio.pause();
+    log(isMusicPlaying ? "Music: ON" : "Music: OFF");
+}
+
+    function Hex() { const hex = prompt("Enter Hex:"); if (hex) sendCommand(hex.toUpperCase()); }
     function exportLog() { const blob = new Blob([logContent], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `GW_Log_${Date.now()}.txt`; a.click(); }
     function clearConsole() { document.getElementById('console').innerHTML = ""; logContent = ""; }
+
+
 
     drawGauge('g1', 0, 0, 5000, 'RPM');
     drawGauge('g2', 0, 0, 180, 'MPa');
