@@ -205,13 +205,25 @@
         const targetPids = ["0104", "0105", "010B", "010C", "010F", "0123"];
         for (let cmd of targetPids) { await sendCommand(cmd); await new Promise(r => setTimeout(r, 500)); }
     }
-let isMusicPlaying = false;
-const audio = new Audio('1234.mp3'); // Replace with your file path
+    
+    let audio = null;
 
-function toggleMusic() {
-    isMusicPlaying = !isMusicPlaying;
-    isMusicPlaying ? audio.play() : audio.pause();
-    log(isMusicPlaying ? "Music: ON" : "Music: OFF");
+    function toggleMusic() {
+    // Create the audio object ONLY when the button is first clicked
+    if (!audio) {
+        audio = new Audio('1234.mp3');
+        audio.loop = true; // Optional: keeps the techno looping
+    }
+
+    if (audio.paused) {
+        audio.play().catch(e => log("Music Error: " + e.message, "err"));
+        log("Music: ON");
+        document.querySelector('.btn-rainbow').style.boxShadow = "0 0 15px white";
+    } else {
+        audio.pause();
+        log("Music: OFF");
+        document.querySelector('.btn-rainbow').style.boxShadow = "none";
+    }
 }
 
     function Hex() { const hex = prompt("Enter Hex:"); if (hex) sendCommand(hex.toUpperCase()); }
