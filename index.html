@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>E.C.U. HACKER</title>
+    <title>E.C.U.M. HACKER</title>
     <style>
         :root { --bg: #050505; --accent: #00f2ff; --panel: rgba(255, 255, 255, 0.07); }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -46,7 +46,7 @@
     </div>
     <div id="pg2" class="ctrl-page" style="display:none">
         <button class="btn-purple" onclick="setPage(1)">Back</button>
-        <button class="btn-green" onclick="sendCommand('221123')">Hi-Res Fuel</button>
+        <button class="btn-red" style="background:#dc3545" onclick="clearFaults()">Clear DTCs</button>
         <button class="btn-green" onclick="sendCommand('221167')">Hi-Res Boost</button>
         <button onclick="sendCommand('221121')">Hi-Res Temp</button>
         <button onclick="sendCommand('0100')">Supported</button>
@@ -186,6 +186,14 @@
         } else { clearInterval(liveInterval); }
     }
 
+     async function clearFaults() {
+    log("CLEARING FAULT CODES...");
+    await sendCommand("04"); // Standard OBD Clear
+    await new Promise(r => setTimeout(r, 500));
+    await sendCommand("14FFFFFF"); // UDS Enhanced Clear
+    log("Clear request sent.");
+}
+
     async function deepScanF1() {
         log("--- SCANNING F180 ADDRESSES ---");
         const range = ["F187", "F188", "F189", "F190", "F191", "F197", "F1A0"];
@@ -198,9 +206,9 @@
         for (let cmd of targetPids) { await sendCommand(cmd); await new Promise(r => setTimeout(r, 500)); }
     }
 let isMusicPlaying = false;
-const audio = new Audio(1234.mp3); // Replace with your file path
+const audio = new Audio('1234.mp3'); // Replace with your file path
 
-    function toggleMusic() {
+function toggleMusic() {
     isMusicPlaying = !isMusicPlaying;
     isMusicPlaying ? audio.play() : audio.pause();
     log(isMusicPlaying ? "Music: ON" : "Music: OFF");
