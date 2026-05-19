@@ -155,19 +155,19 @@
             document.getElementById('v4').innerText = temp;
             drawGauge('g4', temp, 0, 120, '°C');
 
-            // OVERHEAT AUDIO ALARM TRIGGER (100°C Threshold)
-            if (temp >= 100) {
+            // 90°C PAY ATTENTION ALARM TRIGGER
+            if (temp >= 90) {
                 initAlarmAudio();
                 if (audio && audio.paused) {
                     audio.play().catch(e => log("Alarm Audio Error: " + e.message, "err"));
-                    log("OVERHEAT WARNING: ALARM ACTIVATED!", "err");
+                    log("CRITICAL NOTIFICATION: ENGINE EXCEEDED 90°C LIMIT!", "err");
                     document.querySelector('.btn-rainbow').style.boxShadow = "0 0 25px red";
                 }
-            } else if (temp < 95) {
-                // Automatically pauses alarm if engine cools below 95°C
+            } else if (temp < 85) {
+                // 85°C Safety Cool-Down Reset
                 if (audio && !audio.paused && document.querySelector('.btn-rainbow').style.boxShadow === "rgb(255, 0, 0) 0px 0px 25px 0px") {
                     audio.pause();
-                    log("Temperature normalized. Alarm deactivated.");
+                    log("Safe temperature window hit. Alarm muted.");
                     document.querySelector('.btn-rainbow').style.boxShadow = "none";
                 }
             }
@@ -198,8 +198,16 @@
         btn.style.background = isLive ? "var(--accent)" : "#333";
         if (isLive) {
             liveInterval = setInterval(async () => {
-                if (isConnected && writer) { await sendCommand("010C"); await new Promise(r => setTimeout(r, 400)); await sendCommand("010B"); }
-            }, 1000);
+                if (isConnected && writer) { 
+                    await sendCommand("010C"); // 1. RPM Loop
+                    await new Promise(r => setTimeout(r, 300)); 
+                    await sendCommand("010B"); // 2. Boost Loop
+                    await new Promise(r => setTimeout(r, 300));
+                    await sendCommand("0105"); // 3. Temp Loop
+                    await new Promise(r => setTimeout(r, 300));
+                    await sendCommand("0123"); // 4. Rail Pressure Loop
+                }
+            }, 1500); // 1.5-second complete cycle ensures fluid tracking across all 4 parameters
         } else { clearInterval(liveInterval); }
     }
 
@@ -233,30 +241,9 @@
     }
 
     function toggleMusic() {
-    // Create the audio object ONLY when the button is first clicked
     initAlarmAudio();
 
     if (audio.paused) {
         audio.play().catch(e => log("Music Error: " + e.message, "err"));
         log("Music: ON");
         document.querySelector('.btn-rainbow').style.boxShadow = "0 0 15px white";
-    } else {
-        audio.pause();
-        log("Music: OFF");
-        document.querySelector('.btn-rainbow').style.boxShadow = "none";
-    }
-}
-
-    function Hex() { const hex = prompt("Enter Hex:"); if (hex) sendCommand(hex.toUpperCase()); }
-    function exportLog() { const blob = new Blob([logContent], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `GW_Log_${Date.now()}.txt`; a.click(); }
-    function clearConsole() { document.getElementById('console').innerHTML = ""; logContent = ""; }
-
-
-
-    drawGauge('g1', 0, 0, 5000, 'RPM');
-    drawGauge('g2', 0, 0, 180, 'MPa');
-    drawGauge('g3', 0, 0, 30, 'PSI');
-    drawGauge('g4', 0, 0, 120, '°C');
-</script>
-</body>
-</html>
