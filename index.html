@@ -54,7 +54,7 @@
         <button onclick="sendCommand('0902')">VIN (09)</button>
         <button onclick="sendCommand('22F190')">VIN (22)</button>
         <button class="btn-gold" onclick="sendCommand('0105')">ECT (01)</button>
-        
+         
     </div>
 </div>
 
@@ -154,6 +154,23 @@
             const temp = parseInt(parts[idx], 16) - 40;
             document.getElementById('v4').innerText = temp;
             drawGauge('g4', temp, 0, 120, '°C');
+
+            // OVERHEAT AUDIO ALARM TRIGGER (100°C Threshold)
+            if (temp >= 100) {
+                initAlarmAudio();
+                if (audio && audio.paused) {
+                    audio.play().catch(e => log("Alarm Audio Error: " + e.message, "err"));
+                    log("OVERHEAT WARNING: ALARM ACTIVATED!", "err");
+                    document.querySelector('.btn-rainbow').style.boxShadow = "0 0 25px red";
+                }
+            } else if (temp < 95) {
+                // Automatically pauses alarm if engine cools below 95°C
+                if (audio && !audio.paused && document.querySelector('.btn-rainbow').style.boxShadow === "rgb(255, 0, 0) 0px 0px 25px 0px") {
+                    audio.pause();
+                    log("Temperature normalized. Alarm deactivated.");
+                    document.querySelector('.btn-rainbow').style.boxShadow = "none";
+                }
+            }
         }
     }
 
@@ -208,12 +225,16 @@
     
     let audio = null;
 
+    function initAlarmAudio() {
+        if (!audio) {
+            audio = new Audio('1234.mp3');
+            audio.loop = true;
+        }
+    }
+
     function toggleMusic() {
     // Create the audio object ONLY when the button is first clicked
-    if (!audio) {
-        audio = new Audio('1234.mp3');
-        audio.loop = true; // Optional: keeps the techno looping
-    }
+    initAlarmAudio();
 
     if (audio.paused) {
         audio.play().catch(e => log("Music Error: " + e.message, "err"));
