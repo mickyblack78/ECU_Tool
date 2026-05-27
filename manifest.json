@@ -1,9 +1,9 @@
 {
   "short_name": "ECU_Tool",
-  "name": "X MASTER ",
+  "name": "ECU",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "69.png",
       "sizes": "192x192",
       "type": "image/png"
     }
