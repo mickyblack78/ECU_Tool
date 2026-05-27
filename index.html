@@ -271,6 +271,12 @@
     drawGauge('g2', 0, 0, 180, 'MPa');
     drawGauge('g3', 0, 0, 30, 'PSI');
     drawGauge('g4', 0, 0, 120, '°C');
+    // This tells the browser to turn on your sw.js file
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log("PWA Active"))
+        .catch(err => console.log("PWA Error: " + err.message));
+}
 </script>
 </body>
 </html>
