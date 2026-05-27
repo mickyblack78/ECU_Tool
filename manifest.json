@@ -1,21 +1,20 @@
 {
-  "short_name": "ECU_Tool",
-  "name": "ECU",
+  "name": "ECU_Tool",
+  "short_name": "ECU",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
   "icons": [
     {
       "src": "69.png",
       "sizes": "192x192",
-      "type": "image/png". 
-    }
+      "type": "image/png"
+    },
     {
-    "src": "./69.png",
+      "src": "69.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-         
-    }
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  ]
 }
