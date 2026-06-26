@@ -136,13 +136,13 @@
     function parseOBD(data) {
         const parts = data.trim().split(/\s+/);
 
-        // --- 1. TRANSLATOR LOGIC (Error Codes) ---
+        // 1. Translator for Errors (No more 7F 22 31)
         if (parts[0] === "7F") {
             log("ECU Alert: Request Denied (Code " + parts[2] + ")", "err");
             return;
         }
 
-        // --- 2. VOLTAGE TRANSLATOR ---
+        // 2. Voltage Translator (The "English" translation)
         if (data.includes("62 F4 04") || data.includes("41 42")) {
             const idx = parts.indexOf("04") !== -1 ? parts.indexOf("04") + 1 : parts.indexOf("42") + 1;
             const voltage = (parseInt(parts[idx], 16) * 256 + parseInt(parts[idx + 1], 16)) / 1000;
@@ -150,64 +150,17 @@
             return;
         }
 
-        // --- 3. EXISTING GAUGES ---
-        // (Keep your existing RPM, Boost, and Temp logic blocks here...)
-        // Ensure the Temperature alarm block ends before the final }
+        // 3. Existing Gauge Logic (RPM, Boost, Temp - Leave these exactly as you had them)
+        if (data.includes("41 0C") || data.includes("62 11 0C")) {
+            const idx = parts.indexOf("0C") !== -1 ? parts.indexOf("0C") + 1 : parts.indexOf("11") + 2;
+            const rpm = ((parseInt(parts[idx], 16) * 256) + parseInt(parts[idx + 1], 16)) / 4;
+            document.getElementById('v1').innerText = Math.round(rpm);
+            drawGauge('g1', rpm, 0, 5000, 'RPM');
+        }
+        // ... (Keep the rest of your existing gauge blocks below here)
     }
     function drawGauge(id, val, min, max, unit) {
-        const c = document.getElementById(id);
-        const ctx = c.getContext('2d');
-        c.width = 200; c.height = 200; ctx.clearRect(0, 0, 200, 200);
-        ctx.beginPath(); ctx.arc(100, 110, 80, 0.8 * Math.PI, 0.2 * Math.PI); ctx.strokeStyle = '#333'; ctx.lineWidth = 10; ctx.stroke();
-        const angle = 0.8 * Math.PI + (1.4 * Math.PI * ((val - min) / (max - min)));
-        ctx.beginPath(); ctx.arc(100, 110, 80, 0.8 * Math.PI, angle); ctx.strokeStyle = '#00f2ff'; ctx.lineWidth = 10; ctx.stroke();
-        ctx.fillStyle = '#aaa'; ctx.font = '12px Arial'; ctx.textAlign = 'center'; ctx.fillText(unit, 100, 140);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 24px Arial'; ctx.fillText(Math.round(val), 100, 110);
-    }
-
-    function setPage(num) {
-        document.getElementById('pg1').style.display = num === 1 ? 'grid' : 'none';
-        document.getElementById('pg2').style.display = num === 2 ? 'grid' : 'none';
-        document.getElementById('mode-indicator').innerText = num === 1 ? "DASHBOARD" : "ENHANCED DATA";
-    }
-
-    function toggleLive() {
-        isLive = !isLive;
-        const btn = document.getElementById('live-btn');
-        btn.innerText = isLive ? "Live: ON" : "Live: OFF";
-        btn.style.background = isLive ? "var(--accent)" : "#333";
-        if (isLive) {
-            liveInterval = setInterval(async () => {
-                if (isConnected && writer) { 
-                    await sendCommand("010C"); // 1. RPM Loop
-                    await new Promise(r => setTimeout(r, 300)); 
-                    await sendCommand("010B"); // 2. Boost Loop
-                    await new Promise(r => setTimeout(r, 300));
-                    await sendCommand("0105"); // 3. Temp Loop
-                    await new Promise(r => setTimeout(r, 300));
-                    await sendCommand("0123"); // 4. Rail Pressure Loop
-                }
-            }, 1500); // 1.5-second complete cycle ensures fluid tracking across all 4 parameters
-        } else { clearInterval(liveInterval); }
-    }
-
-     async function clearFaults() {
-    log("CLEARING FAULT CODES...");
-    await sendCommand("04"); // Standard OBD Clear
-    await new Promise(r => setTimeout(r, 500));
-    await sendCommand("14FFFFFF"); // UDS Enhanced Clear
-    log("Clear request sent.");
-}
-
-    async function deepScanF1() {
-        log("--- SCANNING F180 ADDRESSES ---");
-        const range = ["F187", "F188", "F189", "F190", "F191", "F197", "F1A0"];
-        for (let id of range) { await sendCommand("22" + id); await new Promise(r => setTimeout(r, 500)); }
-    }
-
-    async function requestStdPids() {
-        log("--- HUNTING DIESEL PIDS ---");
-        const targetPids = ["0104", "0105", "010B", "010C", "010F", "0123"];
+                const targetPids = ["0104", "0105", "010B", "010C", "010F", "0123"];
         for (let cmd of targetPids) { await sendCommand(cmd); await new Promise(r => setTimeout(r, 500)); }
     }
     
