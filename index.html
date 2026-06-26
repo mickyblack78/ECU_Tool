@@ -172,6 +172,12 @@
                     document.querySelector('.btn-rainbow').style.boxShadow = "0 0 25px red";
                 }
                 // System Voltage
+                // Delphi Mode 22 Voltage
+        if (data.includes("62 F4 04")) {
+            const idx = parts.indexOf("04") + 1;
+            const voltage = (parseInt(parts[idx], 16) * 256 + parseInt(parts[idx + 1], 16)) / 1000;
+            log("System Voltage: " + voltage.toFixed(2) + "V");
+        }
         if (data.includes("41 42")) {
             const idx = parts.indexOf("42") + 1;
             const voltage = ((parseInt(parts[idx], 16) * 256) + parseInt(parts[idx + 1], 16)) / 1000;
